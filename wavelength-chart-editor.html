@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>WAVELENGTH — Chart Editor</title>
+<title>WAVELENGTH - Chart Editor</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
 
@@ -10,10 +10,10 @@
     --bg:       #0a0806;
     --surface:  #130f0a;
     --border:   #2a1f14;
-    --lane0:    #7c3aed; /* purple — Note */
-    --lane1:    #eab308; /* yellow — Nomu */
-    --lane2:    #ec4899; /* pink   — Pop  */
-    --lane3:    #e2e8f0; /* white  — Crest */
+    --lane0:    #7c3aed; /* purple - Note */
+    --lane1:    #eab308; /* yellow - Nomu */
+    --lane2:    #ec4899; /* pink   - Pop  */
+    --lane3:    #e2e8f0; /* white  - Crest */
     --accent:   #c47a3a;
     --dim:      #4a3728;
     --text:     #e8d5c4;
@@ -314,7 +314,7 @@
   <div class="sep"></div>
   <div id="song-info">
     <div id="song-name">No song loaded</div>
-    <div id="song-meta">— bpm · — duration</div>
+    <div id="song-meta">- bpm · - duration</div>
   </div>
   <div class="sep"></div>
   <button class="btn" id="btn-load-audio">Load Audio</button>
@@ -439,7 +439,7 @@
           <div style="color:#e2e8f0">C7–B8 CREST</div>
         </div>
         <div style="font-size:9px;color:var(--textdim);margin-top:4px">
-          Last: <span id="midi-last-note" style="color:var(--hit)">—</span>
+          Last: <span id="midi-last-note" style="color:var(--hit)">-</span>
         </div>
       </div>
       <button class="btn" id="btn-clear" style="width:100%;color:var(--red);border-color:var(--red)">CLEAR ALL</button>
@@ -527,7 +527,7 @@
   </div>
 </div>
 
-<!-- PREVIEW OVERLAY — notes fly toward hit line -->
+<!-- PREVIEW OVERLAY - notes fly toward hit line -->
 <div id="preview-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:50;flex-direction:column;">
   <div style="display:flex;align-items:center;gap:16px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border)">
     <div style="font-family:'Bebas Neue';font-size:18px;color:var(--hit);letter-spacing:3px">PREVIEW</div>
@@ -603,7 +603,7 @@ function wvlsToSec(str) {
 function exportWvls() {
   const m = state.meta;
   const lines = [
-    `# WVLS — WaVeLength Song v1`,
+    `# WVLS - WaVeLength Song v1`,
     ``,
     `[meta]`,
     `title   = ${m.title   || 'Untitled'}`,
@@ -723,7 +723,7 @@ window.addEventListener('resize', resizeCanvases);
 setTimeout(resizeCanvases, 50);
 
 // ═══════════════════════════════════════════════════════════════
-// DRAWING — EDITOR
+// DRAWING - EDITOR
 // ═══════════════════════════════════════════════════════════════
 function timeToX(t) { return PLAYHEAD_X + (t - state.currentTime) * state.zoom; }
 function xToTime(x) { return state.currentTime + (x - PLAYHEAD_X) / state.zoom; }
@@ -878,7 +878,7 @@ function drawWaveform() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// PREVIEW MODE — notes fly right-to-left toward hit line
+// PREVIEW MODE - notes fly right-to-left toward hit line
 // ═══════════════════════════════════════════════════════════════
 const previewCanvas = document.getElementById('preview-canvas');
 const pCtx = previewCanvas.getContext('2d');
@@ -941,7 +941,7 @@ function drawPreview() {
     drawDiamondStroke(pCtx, HIT_LINE_X, y, 14);
   }
 
-  // Flying notes — position based on time offset from current
+  // Flying notes - position based on time offset from current
   const t = state.currentTime;
   for (const n of previewNotes) {
     const dt = n.time - t;                     // seconds ahead of current time
@@ -1354,7 +1354,7 @@ document.querySelectorAll('[data-type]').forEach(b=>b.addEventListener('click',(
 function updateSpecLabel() {
   document.getElementById('spec-id-display').textContent = state.specId;
   const def = (state.meta.specDefs||{})[state.specId];
-  document.getElementById('spec-id-name').textContent = def || 'undefined — define in meta';
+  document.getElementById('spec-id-name').textContent = def || 'undefined - define in meta';
 }
 document.getElementById('spec-prev').addEventListener('click',()=>{
   state.specId = Math.max(1, state.specId-1); updateSpecLabel();
@@ -1374,7 +1374,7 @@ document.getElementById('btn-shortcuts').addEventListener('click',()=>{
   document.getElementById('shortcuts').classList.toggle('visible');
 });
 
-// Wire a meta button — repurpose song-info as clickable
+// Wire a meta button - repurpose song-info as clickable
 document.getElementById('song-info').style.cursor='pointer';
 document.getElementById('song-info').addEventListener('click',()=>{
   updateSongMeta();
@@ -1409,10 +1409,10 @@ document.getElementById('meta-save').addEventListener('click',()=>{
 // Keyboard split into 4 equal zones across 88 keys (MIDI 21–108)
 // C1(24)–B2(47) = NOTE, C3(48)–B4(71) = NOMU, C5(72)–B6(95) = POP, C7(96)–B8(119) = CREST
 function midiNoteToLane(note) {
-  if (note < 48)  return 0; // NOTE  — low register
-  if (note < 72)  return 1; // NOMU  — mid-low
-  if (note < 96)  return 2; // POP   — mid-high
-  return 3;                  // CREST — high register
+  if (note < 48)  return 0; // NOTE  - low register
+  if (note < 72)  return 1; // NOMU  - mid-low
+  if (note < 96)  return 2; // POP   - mid-high
+  return 3;                  // CREST - high register
 }
 
 const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -1422,7 +1422,7 @@ function midiNoteName(n) {
 
 // Track held controller keys for hold detection
 const midiHeld = {}; // noteNumber → {startTime, lane}
-const HOLD_THRESHOLD_MS = 200; // ms — below this = tap, above = hold
+const HOLD_THRESHOLD_MS = 200; // ms - below this = tap, above = hold
 
 function initMidi() {
   if (!navigator.requestMIDIAccess) {
@@ -1479,7 +1479,7 @@ function onMidiMessage(e) {
     const t = state.currentTime;
 
     if (state.noteType === 'special') {
-      // Special note — place tap and open spec picker
+      // Special note - place tap and open spec picker
       placeNote(t, lane);
       // Briefly highlight the spec picker
       const picker = document.getElementById('special-picker');
