@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>WAVELENGTH — Chart Editor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+
+  :root {
+    --bg:       #0a0806;
+    --surface:  #130f0a;
+    --border:   #2a1f14;
+    --lane0:    #7c3aed; /* purple — Note */
+    --lane1:    #eab308; /* yellow — Nomu */
+    --lane2:    #ec4899; /* pink   — Pop  */
+    --lane3:    #e2e8f0; /* white  — Crest */
+    --accent:   #c47a3a;
+    --dim:      #4a3728;
+    --text:     #e8d5c4;
+    --textdim:  #6b5040;
+    --hit:      #00ffb4;
+    --red:      #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  #logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: 4px;
+    flex-shrink: 0;
+  }
+
+  #logo span { color: var(--hit); }
+
+  .sep { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; }
+
+  #song-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  #song-name { font-size: 11px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #song-meta { font-size: 10px; color: var(--textdim); }
+
+  .btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.1s;
+    flex-shrink: 0;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .btn.danger { border-color: var(--red); color: var(--red); }
+  .btn.danger:hover { background: var(--red); color: var(--bg); }
+
+  #bpm-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  #bpm-wrap label { color: var(--textdim); font-size: 10px; }
+  #bpm-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: bold;
+    width: 54px;
+    padding: 4px 6px;
+    text-align: center;
+  }
+  #bpm-input:focus { outline: none; border-color: var(--accent); }
+
+  #snap-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  #snap-wrap label { color: var(--textdim); font-size: 10px; }
+  #snap-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+
+  #time-display {
+    font-family: 'Bebas Neue', monospace;
+    font-size: 18px;
+    color: var(--hit);
+    letter-spacing: 2px;
+    flex-shrink: 0;
+    min-width: 90px;
+    text-align: right;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 160px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 12px 8px;
+    gap: 12px;
+  }
+
+  .sidebar-section { display: flex; flex-direction: column; gap: 6px; }
+  .sidebar-label { font-size: 9px; color: var(--textdim); letter-spacing: 2px; text-transform: uppercase; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+
+  .lane-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .lane-toggle:hover { border-color: var(--border); }
+  .lane-toggle.active { border-color: currentColor; }
+  .lane-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .lane-name { font-size: 11px; }
+
+  #tool-btns { display: flex; flex-direction: column; gap: 4px; }
+  .tool-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--textdim);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 6px 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.1s;
+  }
+  .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tool-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+  #note-stats { font-size: 10px; color: var(--textdim); line-height: 1.8; }
+  #note-stats span { color: var(--text); }
+
+  /* ── EDITOR AREA ── */
+  #editor-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Waveform strip */
+  #waveform-strip {
+    height: 48px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  #waveform-canvas { position: absolute; top: 0; left: 0; }
+
+  /* Lane headers */
+  #lane-headers {
+    display: flex;
+    height: 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .lane-header {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    letter-spacing: 1px;
+    border-right: 1px solid var(--border);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+  }
+
+  /* Main chart canvas */
+  #chart-canvas-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    cursor: crosshair;
+  }
+  #chart-canvas { position: absolute; top: 0; left: 0; }
+
+  /* Playhead */
+  #playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--hit);
+    box-shadow: 0 0 8px var(--hit);
+    pointer-events: none;
+    left: 200px;
+  }
+
+  /* ── BOTTOM TRANSPORT ── */
+  #transport {
+    height: 44px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    flex-shrink: 0;
+  }
+
+  #progress-wrap {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    position: relative;
+    cursor: pointer;
+  }
+  #progress-fill { height: 100%; background: var(--accent); pointer-events: none; }
+  #progress-wrap:hover #progress-fill { background: var(--hit); }
+
+  /* ── KEYBOARD SHORTCUTS OVERLAY ── */
+  #shortcuts {
+    position: absolute;
+    bottom: 52px;
+    right: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    font-size: 10px;
+    line-height: 2;
+    color: var(--textdim);
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  #shortcuts.visible { opacity: 1; }
+  #shortcuts strong { color: var(--accent); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 6px 18px;
+    font-size: 11px;
+    font-weight: bold;
+    opacity: 0;
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .meta-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 5px 8px;
+    width: 100%;
+  }
+  .meta-input:focus { outline: none; border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div id="logo">WAVE<span>LEN</span>GTH</div>
+  <div class="sep"></div>
+  <div id="song-info">
+    <div id="song-name">No song loaded</div>
+    <div id="song-meta">— bpm · — duration</div>
+  </div>
+  <div class="sep"></div>
+  <button class="btn" id="btn-load-audio">Load Audio</button>
+  <button class="btn" id="btn-load-midi">Load MIDI</button>
+  <button class="btn" id="btn-load-wvls">Open .wvls</button>
+  <div class="sep"></div>
+  <div id="bpm-wrap">
+    <label>BPM</label>
+    <input type="number" id="bpm-input" value="120" min="40" max="300">
+  </div>
+  <div id="snap-wrap">
+    <label>SNAP</label>
+    <select id="snap-select">
+      <option value="1">1/1</option>
+      <option value="2">1/2</option>
+      <option value="4" selected>1/4</option>
+      <option value="8">1/8</option>
+      <option value="16">1/16</option>
+      <option value="0">Free</option>
+    </select>
+  </div>
+  <div class="sep"></div>
+  <button class="btn" id="btn-play">▶ PLAY</button>
+  <button class="btn" id="btn-preview">◈ PREVIEW</button>
+  <button class="btn danger" id="btn-export">SAVE .wvls</button>
+  <div class="sep"></div>
+  <div id="time-display">0:00.000</div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Difficulty</div>
+      <div id="diff-btns" style="display:flex;flex-direction:column;gap:4px">
+        <button class="tool-btn active" data-diff="easy">EASY</button>
+        <button class="tool-btn" data-diff="normal">NORMAL</button>
+        <button class="tool-btn" data-diff="hard">HARD</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Note Type</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="tool-btn active" data-type="normal" id="type-normal">● NORMAL</button>
+        <button class="tool-btn" data-type="special" id="type-special">★ SPECIAL</button>
+      </div>
+      <div id="special-picker" style="display:none;margin-top:6px;display:none;flex-direction:column;gap:4px">
+        <div style="font-size:9px;color:var(--textdim);letter-spacing:1px">SPEC ID</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="btn" id="spec-prev" style="padding:2px 8px">◀</button>
+          <div id="spec-id-display" style="flex:1;text-align:center;font-family:'Bebas Neue';font-size:20px;color:var(--hit)">1</div>
+          <button class="btn" id="spec-next" style="padding:2px 8px">▶</button>
+        </div>
+        <div id="spec-id-name" style="font-size:10px;color:var(--textdim);text-align:center;font-style:italic">undefined</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Character</div>
+      <div id="char-btns" style="display:flex;flex-direction:column;gap:4px">
+        <button class="tool-btn active" data-char="wave" style="color:#00ffb4">WAVE</button>
+        <button class="tool-btn" data-char="note" style="color:#7c3aed">NOTE</button>
+        <button class="tool-btn" data-char="nomu" style="color:#eab308">NOMU</button>
+        <button class="tool-btn" data-char="pop"  style="color:#ec4899">POP</button>
+        <button class="tool-btn" data-char="crest" style="color:#e2e8f0">CREST</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Lanes</div>
+      <div class="lane-toggle active" data-lane="0" style="color:#7c3aed">
+        <div class="lane-dot" style="background:#7c3aed"></div>
+        <div class="lane-name">NOTE</div>
+      </div>
+      <div class="lane-toggle active" data-lane="1" style="color:#eab308">
+        <div class="lane-dot" style="background:#eab308"></div>
+        <div class="lane-name">NOMU</div>
+      </div>
+      <div class="lane-toggle active" data-lane="2" style="color:#ec4899">
+        <div class="lane-dot" style="background:#ec4899"></div>
+        <div class="lane-name">POP</div>
+      </div>
+      <div class="lane-toggle active" data-lane="3" style="color:#e2e8f0">
+        <div class="lane-dot" style="background:#e2e8f0"></div>
+        <div class="lane-name">CREST</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Tool</div>
+      <div id="tool-btns">
+        <button class="tool-btn active" data-tool="tap">● TAP NOTE</button>
+        <button class="tool-btn" data-tool="hold">▬ HOLD NOTE</button>
+        <button class="tool-btn" data-tool="erase">✕ ERASE</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Stats</div>
+      <div id="note-stats">
+        Total: <span id="stat-total">0</span><br>
+        Taps:  <span id="stat-taps">0</span><br>
+        Holds: <span id="stat-holds">0</span><br>
+        NPS:   <span id="stat-nps">0.0</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:auto">
+      <div class="sidebar-label">MIDI Controller</div>
+      <div id="midi-status" style="font-size:10px;color:var(--textdim);line-height:1.8">
+        <span id="midi-dot" style="color:var(--red)">●</span> <span id="midi-status-text">Not connected</span>
+      </div>
+      <div id="midi-zone-display" style="display:none;margin-top:6px">
+        <div style="font-size:9px;color:var(--textdim);margin-bottom:4px">ZONE MAP</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;font-size:9px">
+          <div style="color:#7c3aed">C1–B2 NOTE</div>
+          <div style="color:#eab308">C3–B4 NOMU</div>
+          <div style="color:#ec4899">C5–B6 POP</div>
+          <div style="color:#e2e8f0">C7–B8 CREST</div>
+        </div>
+        <div style="font-size:9px;color:var(--textdim);margin-top:4px">
+          Last: <span id="midi-last-note" style="color:var(--hit)">—</span>
+        </div>
+      </div>
+      <button class="btn" id="btn-clear" style="width:100%;color:var(--red);border-color:var(--red)">CLEAR ALL</button>
+      <button class="btn" id="btn-shortcuts" style="width:100%">SHORTCUTS</button>
+    </div>
+  </div>
+
+  <!-- EDITOR -->
+  <div id="editor-wrap">
+    <div id="waveform-strip">
+      <canvas id="waveform-canvas"></canvas>
+    </div>
+    <div id="lane-headers">
+      <div class="lane-header" style="color:#7c3aed">NOTE</div>
+      <div class="lane-header" style="color:#eab308">NOMU</div>
+      <div class="lane-header" style="color:#ec4899">POP</div>
+      <div class="lane-header" style="color:#e2e8f0">CREST</div>
+    </div>
+    <div id="chart-canvas-wrap">
+      <canvas id="chart-canvas"></canvas>
+      <div id="playhead"></div>
+    </div>
+    <div id="shortcuts">
+      <strong>SPACE</strong> play/pause<br>
+      <strong>1-4</strong> select lane<br>
+      <strong>T</strong> tap tool<br>
+      <strong>H</strong> hold tool<br>
+      <strong>E</strong> erase tool<br>
+      <strong>←/→</strong> seek 1 beat<br>
+      <strong>CTRL+Z</strong> undo<br>
+      <strong>DEL</strong> clear selection
+    </div>
+  </div>
+</div>
+
+<!-- TRANSPORT -->
+<div id="transport">
+  <button class="btn" id="btn-prev">|◀</button>
+  <button class="btn" id="btn-playtransport">▶</button>
+  <button class="btn" id="btn-next">▶|</button>
+  <div id="progress-wrap">
+    <div id="progress-fill" style="width:0%"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<input type="file" id="file-audio" accept="audio/*" style="display:none">
+<input type="file" id="file-midi" accept=".mid,.midi" style="display:none">
+<input type="file" id="file-wvls" accept=".wvls" style="display:none">
+
+<!-- META MODAL -->
+<div id="meta-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:100;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:24px;min-width:420px;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">
+    <div style="font-family:'Bebas Neue';font-size:18px;color:var(--accent);letter-spacing:3px">SONG META</div>
+
+    <div style="display:grid;grid-template-columns:90px 1fr;gap:8px;align-items:center;font-size:11px;color:var(--textdim)">
+      <label>Title</label>      <input class="meta-input" id="meta-title" placeholder="Concrete Static">
+      <label>Artist</label>     <input class="meta-input" id="meta-artist" placeholder="TBD">
+      <label>Album</label>      <input class="meta-input" id="meta-album" placeholder="Tour Leg 1">
+      <label>Audio file</label> <input class="meta-input" id="meta-audio" placeholder="song.ogg">
+      <label>BPM</label>        <input class="meta-input" id="meta-bpm" type="number" value="120">
+      <label>Offset (s)</label> <input class="meta-input" id="meta-offset" type="number" step="0.001" value="0">
+      <label>Preview</label>    <input class="meta-input" id="meta-preview" placeholder="0:43.000">
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:9px;color:var(--textdim);letter-spacing:2px;text-transform:uppercase">Special Note Definitions</div>
+        <button class="btn" id="spec-add-btn" style="padding:3px 10px;font-size:10px">+ ADD</button>
+      </div>
+      <div id="spec-list" style="display:flex;flex-direction:column;gap:6px;font-size:11px">
+        <!-- populated by JS -->
+      </div>
+      <div style="font-size:9px;color:var(--textdim);margin-top:8px;line-height:1.6">
+        Each ID maps to a behavior the game engine will trigger.<br>
+        e.g. <span style="color:var(--accent)">resonance_burst</span>, <span style="color:var(--accent)">logic_scoring</span>, <span style="color:var(--accent)">hammer</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" id="meta-cancel">Cancel</button>
+      <button class="btn active" id="meta-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- PREVIEW OVERLAY — notes fly toward hit line -->
+<div id="preview-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:50;flex-direction:column;">
+  <div style="display:flex;align-items:center;gap:16px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border)">
+    <div style="font-family:'Bebas Neue';font-size:18px;color:var(--hit);letter-spacing:3px">PREVIEW</div>
+    <div id="preview-diff" style="font-size:11px;color:var(--textdim)">easy</div>
+    <div style="flex:1"></div>
+    <button class="btn danger" id="btn-close-preview">✕ CLOSE</button>
+  </div>
+  <canvas id="preview-canvas" style="flex:1;width:100%;display:block"></canvas>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const LANE_COLORS = ['#7c3aed','#eab308','#ec4899','#e2e8f0'];
+const LANE_NAMES  = ['NOTE','NOMU','POP','CREST'];
+const CHAR_COLORS = {wave:'#00ffb4',note:'#7c3aed',nomu:'#eab308',pop:'#ec4899',crest:'#e2e8f0'};
+const PLAYHEAD_X  = 200;
+const HIT_LINE_X  = 160; // preview mode hit line
+
+let state = {
+  // per-difficulty note maps
+  charts: { easy: [], normal: [], hard: [] },
+  activeDiff:  'easy',
+  tool:        'tap',
+  activeLane:  0,
+  noteType:    'normal',
+  noteChar:    'wave',
+  specId:      1,   // active special note ID when noteType === 'special'
+  bpm:         120,
+  snapDiv:     4,
+  currentTime: 0,
+  duration:    60,
+  playing:     false,
+  zoom:        200,
+  audioBuffer: null,
+  audioCtx:    null,
+  audioSource: null,
+  audioStartTime: 0,
+  audioOffset: 0,
+  waveformData: null,
+  holdStart:   null,
+  nextId:      1,
+  history:     [],
+  // meta
+  meta: { title:'', artist:'', album:'', audio:'', bpm:120, offset:0, preview:'0:00.000', specDefs:{} },
+  // preview mode
+  previewing:  false,
+};
+
+// shorthand for active chart
+function notes() { return state.charts[state.activeDiff]; }
+function setNotes(arr) { state.charts[state.activeDiff] = arr; }
+
+// ═══════════════════════════════════════════════════════════════
+// WVLS FORMAT
+// ═══════════════════════════════════════════════════════════════
+function secToWvls(s) {
+  const m   = Math.floor(s / 60);
+  const sec = s % 60;
+  const ss  = Math.floor(sec);
+  const ms  = Math.round((sec - ss) * 1000);
+  return `${m}:${String(ss).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+}
+
+function wvlsToSec(str) {
+  if (!str || str === '0') return 0;
+  const [mStr, rest] = str.split(':');
+  const [sStr, msStr] = rest.split('.');
+  return parseInt(mStr)*60 + parseInt(sStr) + parseInt(msStr||'0')/1000;
+}
+
+function exportWvls() {
+  const m = state.meta;
+  const lines = [
+    `# WVLS — WaVeLength Song v1`,
+    ``,
+    `[meta]`,
+    `title   = ${m.title   || 'Untitled'}`,
+    `artist  = ${m.artist  || 'Unknown'}`,
+    `album   = ${m.album   || ''}`,
+    `audio   = ${m.audio   || ''}`,
+    `bpm     = ${state.bpm}`,
+    `offset  = ${m.offset  || 0}`,
+    `preview = ${m.preview || '0:00.000'}`,
+    ``,
+  ];
+
+  for (const diff of ['easy','normal','hard']) {
+    const chart = state.charts[diff];
+    if (!chart.length) continue;
+    lines.push(`[chart:${diff}]`);
+    lines.push(`# time       | lane | duration  | type   | char`);
+    for (const n of [...chart].sort((a,b) => a.time - b.time)) {
+      const t   = secToWvls(n.time).padEnd(11);
+      const dur = n.duration > 0 ? secToWvls(n.duration) : '0';
+      const typeStr = n.type === 'special' ? `special:${n.specId||1}` : (n.type||'normal');
+      lines.push(`${t} | ${n.lane}    | ${dur.padEnd(9)} | ${typeStr.padEnd(10)} | ${n.char||'wave'}`);
+    }
+    if (Object.keys(m.specDefs||{}).length) {
+    for (const [k,v] of Object.entries(m.specDefs)) {
+      lines.push(`spec_note_${k} = ${v}`);
+    }
+    lines.push('');
+  }
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (m.title || 'chart').replace(/\s+/g,'_').toLowerCase() + '.wvls';
+  a.click();
+  toast(`Saved ${lines.length} lines`);
+}
+
+function importWvls(text) {
+  saveHistory();
+  const newCharts = { easy:[], normal:[], hard:[] };
+  let section = null;
+
+  for (let raw of text.split('\n')) {
+    const line = raw.split('#')[0].trim();
+    if (!line) continue;
+
+    const secMatch = line.match(/^\[(\w+)(?::(\w+))?\]$/);
+    if (secMatch) {
+      section = secMatch[1] === 'chart' ? secMatch[2] : secMatch[1];
+      continue;
+    }
+
+    if (section === 'meta') {
+      const [k, ...vParts] = line.split('=');
+      const v = vParts.join('=').trim();
+      const key = k.trim();
+      if (key === 'bpm')     { state.bpm = parseFloat(v); document.getElementById('bpm-input').value = state.bpm; }
+      if (key === 'title')   state.meta.title   = v;
+      if (key === 'artist')  state.meta.artist  = v;
+      if (key === 'album')   state.meta.album   = v;
+      if (key === 'audio')   state.meta.audio   = v;
+      if (key === 'offset')  state.meta.offset  = parseFloat(v);
+      if (key === 'preview') state.meta.preview = v;
+      if (key.startsWith('spec_note_')) {
+        const id = key.replace('spec_note_','');
+        if (!state.meta.specDefs) state.meta.specDefs = {};
+        state.meta.specDefs[id] = v;
+      }
+    }
+
+    if (['easy','normal','hard'].includes(section)) {
+      const parts = line.split('|').map(p => p.trim());
+      if (parts.length < 2) continue;
+      const time     = wvlsToSec(parts[0]);
+      const lane     = parseInt(parts[1]);
+      const duration = parts[2] ? wvlsToSec(parts[2]) : 0;
+      const rawType  = parts[3] || 'normal';
+      const char     = parts[4] || 'wave';
+      let type = rawType, specId = 1;
+      if (rawType.startsWith('special:')) {
+        type   = 'special';
+        specId = parseInt(rawType.split(':')[1]) || 1;
+      }
+      newCharts[section].push({ id: state.nextId++, time, lane, duration, type, specId, char, selected: false });
+    }
+  }
+
+  state.charts = newCharts;
+  updateSongMeta();
+  updateStats();
+  drawChart();
+  toast('Loaded .wvls');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CANVAS SETUP
+// ═══════════════════════════════════════════════════════════════
+const wrapEl      = document.getElementById('chart-canvas-wrap');
+const chartCanvas = document.getElementById('chart-canvas');
+const wfCanvas    = document.getElementById('waveform-canvas');
+const ctx         = chartCanvas.getContext('2d');
+const wfCtx       = wfCanvas.getContext('2d');
+
+function resizeCanvases() {
+  const w = wrapEl.clientWidth, h = wrapEl.clientHeight;
+  chartCanvas.width = w; chartCanvas.height = h;
+  const ws = document.getElementById('waveform-strip');
+  wfCanvas.width = ws.clientWidth; wfCanvas.height = ws.clientHeight;
+  const pc = document.getElementById('preview-canvas');
+  pc.width = pc.parentElement.clientWidth || 960;
+  pc.height = pc.parentElement.clientHeight || 400;
+  drawChart(); drawWaveform();
+}
+window.addEventListener('resize', resizeCanvases);
+setTimeout(resizeCanvases, 50);
+
+// ═══════════════════════════════════════════════════════════════
+// DRAWING — EDITOR
+// ═══════════════════════════════════════════════════════════════
+function timeToX(t) { return PLAYHEAD_X + (t - state.currentTime) * state.zoom; }
+function xToTime(x) { return state.currentTime + (x - PLAYHEAD_X) / state.zoom; }
+function laneToY(lane) { return lane * (chartCanvas.height / 4); }
+function laneHeight() { return chartCanvas.height / 4; }
+
+function noteColor(note) {
+  if (note.type === 'special') return '#ffd700'; // gold
+  return LANE_COLORS[note.lane] + 'cc';
+}
+
+function drawChart() {
+  const W = chartCanvas.width, H = chartCanvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Lane backgrounds
+  for (let i = 0; i < 4; i++) {
+    const y = laneToY(i), lh = laneHeight();
+    ctx.fillStyle = i % 2 === 0 ? '#0d0a07' : '#0a0806';
+    ctx.fillRect(0, y, W, lh);
+    ctx.fillStyle = LANE_COLORS[i] + '12';
+    ctx.fillRect(0, y, W, lh);
+    ctx.strokeStyle = '#2a1f14';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y + lh); ctx.lineTo(W, y + lh); ctx.stroke();
+  }
+
+  // BPM grid
+  const bpm = state.bpm, snap = state.snapDiv || 4;
+  const beatSec = 60 / bpm, snapSec = beatSec / snap;
+  const startSnap = Math.floor(xToTime(0) / snapSec);
+  const endSnap   = Math.ceil(xToTime(W) / snapSec);
+
+  for (let i = startSnap; i <= endSnap; i++) {
+    const t = i * snapSec, x = timeToX(t);
+    const isBeat = i % snap === 0, isMeasure = i % (snap * 4) === 0;
+    ctx.strokeStyle = isMeasure ? '#4a3728' : isBeat ? '#2e2018' : '#1a1208';
+    ctx.lineWidth   = isMeasure ? 1.5 : 1;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    if (isMeasure) {
+      const measure = Math.round(i / (snap * 4)) + 1;
+      ctx.fillStyle = '#4a3728'; ctx.font = '9px Space Mono';
+      ctx.fillText('M' + measure, x + 3, 10);
+    }
+  }
+
+  // Playhead glow
+  const phGrad = ctx.createLinearGradient(PLAYHEAD_X - 40, 0, PLAYHEAD_X + 40, 0);
+  phGrad.addColorStop(0, 'transparent');
+  phGrad.addColorStop(0.5, '#00ffb41a');
+  phGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = phGrad;
+  ctx.fillRect(PLAYHEAD_X - 40, 0, 80, H);
+
+  // Notes
+  for (const note of notes()) {
+    const x  = timeToX(note.time);
+    const y  = laneToY(note.lane);
+    const lh = laneHeight();
+    const col = noteColor(note);
+    if (x + (note.duration||0) * state.zoom < 0 || x > W + 10) continue;
+
+    if (note.duration > 0) {
+      const dur = note.duration * state.zoom;
+      ctx.fillStyle = col + '33';
+      ctx.fillRect(x, y + lh * 0.2, dur, lh * 0.6);
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.strokeRect(x, y + lh * 0.2, dur, lh * 0.6);
+      drawDiamond(ctx, x, y + lh/2, 10, col);
+      drawDiamond(ctx, x + dur, y + lh/2, 6, col + 'aa');
+    } else {
+      const size = note.type === 'special' ? 14 : 11;
+      drawDiamond(ctx, x, y + lh/2, size, col);
+      if (note.type === 'special') {
+        // Glow + spec ID label
+        ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 12;
+        drawDiamond(ctx, x, y + lh/2, size, col);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 9px Space Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText(note.specId||1, x, y + lh/2 + 3);
+        ctx.textAlign = 'left';
+      }
+      // Char dot for non-wave
+      if (note.char && note.char !== 'wave') {
+        ctx.fillStyle = CHAR_COLORS[note.char] || '#fff';
+        ctx.beginPath(); ctx.arc(x, y + lh/2 - size - 4, 3, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  // Hold drag preview
+  if (state.holdStart) {
+    const hs = state.holdStart;
+    const x1 = timeToX(hs.time), x2 = timeToX(hs._endTime || hs.time);
+    const y = laneToY(hs.lane), lh = laneHeight();
+    const col = LANE_COLORS[hs.lane];
+    ctx.fillStyle = col + '22';
+    ctx.fillRect(Math.min(x1,x2), y+lh*0.2, Math.abs(x2-x1), lh*0.6);
+    ctx.strokeStyle = col+'88'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.strokeRect(Math.min(x1,x2), y+lh*0.2, Math.abs(x2-x1), lh*0.6);
+    ctx.setLineDash([]);
+  }
+
+  // Playhead line
+  ctx.strokeStyle = '#00ffb4'; ctx.lineWidth = 2;
+  ctx.shadowColor = '#00ffb4'; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.moveTo(PLAYHEAD_X, 0); ctx.lineTo(PLAYHEAD_X, H); ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawDiamond(ctx, x, y, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y-size); ctx.lineTo(x+size*0.7, y);
+  ctx.lineTo(x, y+size); ctx.lineTo(x-size*0.7, y);
+  ctx.closePath(); ctx.fill();
+}
+function drawDiamondStroke(ctx, x, y, size) {
+  ctx.beginPath();
+  ctx.moveTo(x, y-size); ctx.lineTo(x+size*0.7, y);
+  ctx.lineTo(x, y+size); ctx.lineTo(x-size*0.7, y);
+  ctx.closePath(); ctx.stroke();
+}
+
+function drawWaveform() {
+  const W = wfCanvas.width, H = wfCanvas.height;
+  wfCtx.clearRect(0,0,W,H);
+  wfCtx.fillStyle = '#130f0a'; wfCtx.fillRect(0,0,W,H);
+  if (!state.waveformData) {
+    wfCtx.fillStyle='#2a1f14'; wfCtx.font='10px Space Mono';
+    wfCtx.fillText('Load audio to see waveform', 10, H/2+4); return;
+  }
+  const data = state.waveformData;
+  const startSample = Math.floor(xToTime(0) / state.duration * data.length);
+  const samplesPerPx = data.length / (state.duration * state.zoom);
+  for (let pass = 0; pass < 2; pass++) {
+    wfCtx.strokeStyle = pass===0 ? '#c47a3a' : '#c47a3a44';
+    wfCtx.lineWidth=1; wfCtx.beginPath();
+    for (let px=0; px<W; px++) {
+      const si = Math.floor(startSample + px*samplesPerPx);
+      if (si<0||si>=data.length) continue;
+      const amp = data[si];
+      const y = pass===0 ? H/2-amp*H*0.45 : H/2+amp*H*0.45;
+      if (px===0) wfCtx.moveTo(px,y); else wfCtx.lineTo(px,y);
+    }
+    wfCtx.stroke();
+  }
+  wfCtx.strokeStyle='#00ffb4'; wfCtx.lineWidth=1.5;
+  wfCtx.beginPath(); wfCtx.moveTo(PLAYHEAD_X,0); wfCtx.lineTo(PLAYHEAD_X,H); wfCtx.stroke();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PREVIEW MODE — notes fly right-to-left toward hit line
+// ═══════════════════════════════════════════════════════════════
+const previewCanvas = document.getElementById('preview-canvas');
+const pCtx = previewCanvas.getContext('2d');
+let previewNotes = []; // copies with screen state
+const PREVIEW_SPEED = 400; // px/s notes travel
+
+function startPreview() {
+  state.previewing = true;
+  document.getElementById('preview-overlay').style.display = 'flex';
+  document.getElementById('preview-diff').textContent = state.activeDiff.toUpperCase();
+
+  // Build a sorted copy of current chart
+  previewNotes = notes().map(n => ({...n, hit: false}));
+  previewNotes.sort((a,b) => a.time - b.time);
+
+  if (state.audioBuffer) {
+    if (!state.audioCtx) state.audioCtx = new AudioContext();
+    stopAudio();
+    state.audioSource = state.audioCtx.createBufferSource();
+    state.audioSource.buffer = state.audioBuffer;
+    state.audioSource.connect(state.audioCtx.destination);
+    state.audioOffset = state.currentTime;
+    state.audioStartTime = state.audioCtx.currentTime;
+    state.audioSource.start(0, state.currentTime);
+  }
+  state.playing = true;
+}
+
+function stopPreview() {
+  state.previewing = false;
+  state.playing = false;
+  document.getElementById('preview-overlay').style.display = 'none';
+  stopAudio();
+}
+
+function drawPreview() {
+  if (!state.previewing) return;
+  const W = previewCanvas.width, H = previewCanvas.height;
+  const lh = H / 4;
+  pCtx.clearRect(0,0,W,H);
+
+  // Background lanes
+  for (let i=0; i<4; i++) {
+    pCtx.fillStyle = i%2===0 ? '#0d0a07' : '#0a0806';
+    pCtx.fillRect(0, i*lh, W, lh);
+    pCtx.fillStyle = LANE_COLORS[i]+'14';
+    pCtx.fillRect(0, i*lh, W, lh);
+  }
+
+  // Hit line
+  pCtx.strokeStyle = '#00ffb4'; pCtx.lineWidth = 2;
+  pCtx.shadowColor = '#00ffb4'; pCtx.shadowBlur = 12;
+  pCtx.beginPath(); pCtx.moveTo(HIT_LINE_X,0); pCtx.lineTo(HIT_LINE_X,H); pCtx.stroke();
+  pCtx.shadowBlur = 0;
+
+  // Receptor diamonds on hit line
+  for (let i=0; i<4; i++) {
+    const y = i*lh + lh/2;
+    pCtx.strokeStyle = LANE_COLORS[i]; pCtx.lineWidth = 2;
+    drawDiamondStroke(pCtx, HIT_LINE_X, y, 14);
+  }
+
+  // Flying notes — position based on time offset from current
+  const t = state.currentTime;
+  for (const n of previewNotes) {
+    const dt = n.time - t;                     // seconds ahead of current time
+    const x  = HIT_LINE_X + dt * PREVIEW_SPEED; // positive = right of hit line = upcoming
+    const y  = n.lane * lh + lh/2;
+    if (x < -60 || x > W + 60) continue;
+
+    const col = noteColor(n);
+    if (n.duration > 0) {
+      const durPx = n.duration * PREVIEW_SPEED;
+      pCtx.fillStyle = col + '33';
+      pCtx.fillRect(x, n.lane*lh + lh*0.2, durPx, lh*0.6);
+      pCtx.strokeStyle = col; pCtx.lineWidth=2;
+      pCtx.strokeRect(x, n.lane*lh+lh*0.2, durPx, lh*0.6);
+      drawDiamond(pCtx, x, y, 10, col);
+    } else {
+      const size = n.type==='accent' ? 16 : n.type==='ghost' ? 9 : 12;
+      drawDiamond(pCtx, x, y, size, col);
+      // Glow on accent
+      if (n.type==='accent') {
+        pCtx.shadowColor=col; pCtx.shadowBlur=16;
+        drawDiamond(pCtx, x, y, size, col);
+        pCtx.shadowBlur=0;
+      }
+    }
+  }
+
+  // Lane name labels
+  for (let i=0; i<4; i++) {
+    pCtx.fillStyle = LANE_COLORS[i]+'88';
+    pCtx.font = '11px Space Mono';
+    pCtx.fillText(LANE_NAMES[i], HIT_LINE_X + 20, i*lh + 14);
+  }
+
+  // Time display
+  pCtx.fillStyle = '#00ffb4aa'; pCtx.font = 'bold 14px Space Mono';
+  pCtx.fillText(fmtTime(t), W-120, 20);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════════════════════════
+async function loadAudio(file) {
+  state.audioCtx = state.audioCtx || new AudioContext();
+  const buf = await file.arrayBuffer();
+  state.audioBuffer = await state.audioCtx.decodeAudioData(buf);
+  state.duration = state.audioBuffer.duration;
+  const ch=state.audioBuffer.getChannelData(0), chunks=4000, csize=Math.floor(ch.length/chunks);
+  state.waveformData = new Float32Array(chunks);
+  for (let i=0;i<chunks;i++) {
+    let peak=0;
+    for (let j=0;j<csize;j++) peak=Math.max(peak,Math.abs(ch[i*csize+j]));
+    state.waveformData[i]=peak;
+  }
+  state.meta.audio = file.name;
+  document.getElementById('song-name').textContent = file.name;
+  document.getElementById('song-meta').textContent = `${state.bpm} bpm · ${fmtTime(state.duration)}`;
+  drawWaveform(); toast('Audio loaded');
+}
+
+function playAudio() {
+  if (!state.audioBuffer||!state.audioCtx) return;
+  stopAudio();
+  state.audioSource = state.audioCtx.createBufferSource();
+  state.audioSource.buffer = state.audioBuffer;
+  state.audioSource.connect(state.audioCtx.destination);
+  state.audioOffset = state.currentTime;
+  state.audioStartTime = state.audioCtx.currentTime;
+  state.audioSource.start(0, state.currentTime);
+}
+
+function stopAudio() {
+  if (state.audioSource) { try{state.audioSource.stop();}catch(e){} state.audioSource=null; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MIDI IMPORT
+// ═══════════════════════════════════════════════════════════════
+async function loadMidi(file) {
+  const buf=await file.arrayBuffer(), view=new DataView(buf);
+  const midiNotes=parseMidi(view);
+  saveHistory();
+  const pitchSet=[...new Set(midiNotes.map(n=>n.pitch))].sort((a,b)=>a-b);
+  const laneMap={}; pitchSet.forEach((p,i)=>{laneMap[p]=i%4;});
+  const newNotes=midiNotes.map(n=>({
+    id:state.nextId++,lane:laneMap[n.pitch],time:n.time,
+    duration:n.duration>0.05?n.duration:0,
+    type:'normal',char:'wave',selected:false
+  }));
+  state.charts[state.activeDiff].push(...newNotes);
+  updateStats(); drawChart();
+  toast(`Imported ${newNotes.length} notes`);
+}
+
+function parseMidi(view) {
+  let pos=0;
+  const read=(n)=>{let v=0;for(let i=0;i<n;i++)v=(v<<8)|view.getUint8(pos++);return v;};
+  const readVar=()=>{let v=0,b;do{b=view.getUint8(pos++);v=(v<<7)|(b&0x7f);}while(b&0x80);return v;};
+  if(read(4)!==0x4D546864)return[];
+  read(4);const fmt=read(2),ntrk=read(2),ticks=read(2);
+  const tracks=[];
+  for(let t=0;t<ntrk;t++){
+    if(read(4)!==0x4D54726B)break;
+    const len=read(4),end=pos+len,events=[];
+    let tick=0,lastStatus=0;
+    while(pos<end){
+      tick+=readVar();
+      let status=view.getUint8(pos);
+      if(status&0x80){pos++;lastStatus=status;}else status=lastStatus;
+      const type=status>>4,ch=status&0xf;
+      if(type===0x9){const p=view.getUint8(pos++),v=view.getUint8(pos++);
+        events.push({type:v>0?'on':'off',tick,pitch:p});}
+      else if(type===0x8){const p=view.getUint8(pos++);pos++;events.push({type:'off',tick,pitch:p});}
+      else if(type===0xf&&ch===0xf){const m=view.getUint8(pos++),ml=readVar();pos+=ml;}
+      else pos+=(type===0xc||type===0xd)?1:2;
+    }
+    pos=end;tracks.push(events);
+  }
+  const secPerTick=500000/1000000/ticks,notes=[],active={};
+  for(const track of tracks)for(const ev of track){
+    const t=ev.tick*secPerTick;
+    if(ev.type==='on')active[ev.pitch]=t;
+    else if(ev.type==='off'&&active[ev.pitch]!=null){
+      notes.push({pitch:ev.pitch,time:active[ev.pitch],duration:t-active[ev.pitch]});
+      delete active[ev.pitch];
+    }
+  }
+  return notes.sort((a,b)=>a.time-b.time);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTE EDITING
+// ═══════════════════════════════════════════════════════════════
+function snapTime(t) {
+  if (!state.snapDiv) return t;
+  const s=(60/state.bpm)/state.snapDiv;
+  return Math.round(t/s)*s;
+}
+function laneFromY(y) { return Math.floor(y/(chartCanvas.height/4)); }
+function noteAt(t,lane,tol=0.05) {
+  return notes().find(n=>n.lane===lane&&t>=n.time-tol&&t<=n.time+Math.max(n.duration,0)+tol);
+}
+function placeNote(t,lane) {
+  t=snapTime(t); if(t<0)return;
+  if(noteAt(t,lane,0.02))return;
+  saveHistory();
+  notes().push({id:state.nextId++,lane,time:t,duration:0,
+    type:state.noteType, specId: state.noteType==='special'?state.specId:undefined,
+    char:state.noteChar,selected:false});
+  notes().sort((a,b)=>a.time-b.time);
+  updateStats(); drawChart();
+}
+function eraseNote(t,lane) {
+  const n=noteAt(t,lane); if(!n)return;
+  saveHistory();
+  setNotes(notes().filter(x=>x.id!==n.id));
+  updateStats(); drawChart();
+}
+function saveHistory() {
+  state.history.push(JSON.stringify(state.charts));
+  if(state.history.length>50)state.history.shift();
+}
+function undo() {
+  if(!state.history.length)return;
+  state.charts=JSON.parse(state.history.pop());
+  updateStats(); drawChart(); toast('Undo');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATS & META
+// ═══════════════════════════════════════════════════════════════
+function updateStats() {
+  const ns=notes();
+  const taps=ns.filter(n=>!n.duration).length, holds=ns.filter(n=>n.duration>0).length;
+  document.getElementById('stat-total').textContent=ns.length;
+  document.getElementById('stat-taps').textContent=taps;
+  document.getElementById('stat-holds').textContent=holds;
+  document.getElementById('stat-nps').textContent=state.duration>0?(ns.length/state.duration).toFixed(1):'0.0';
+}
+
+function updateSongMeta() {
+  const m=state.meta;
+  document.getElementById('song-name').textContent = m.title||'Untitled';
+  document.getElementById('song-meta').textContent = `${state.bpm} bpm · ${fmtTime(state.duration)}`;
+  document.getElementById('meta-title').value  = m.title||'';
+  document.getElementById('meta-artist').value = m.artist||'';
+  document.getElementById('meta-album').value  = m.album||'';
+  document.getElementById('meta-audio').value  = m.audio||'';
+  document.getElementById('meta-bpm').value    = state.bpm;
+  document.getElementById('meta-offset').value = m.offset||0;
+  document.getElementById('meta-preview').value= m.preview||'0:00.000';
+  renderSpecList();
+}
+
+function renderSpecList() {
+  const defs = state.meta.specDefs || {};
+  const list = document.getElementById('spec-list');
+  list.innerHTML = '';
+  const ids = Object.keys(defs).sort((a,b)=>+a-+b);
+  if (!ids.length) {
+    list.innerHTML = '<div style="color:var(--textdim);font-size:10px">No special notes defined yet.</div>';
+    return;
+  }
+  for (const id of ids) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px';
+    row.innerHTML = `
+      <div style="font-family:'Bebas Neue';font-size:16px;color:var(--hit);width:24px;text-align:center">${id}</div>
+      <input class="meta-input" style="flex:1" value="${defs[id]||''}" data-spec-id="${id}" placeholder="behavior_id">
+      <button class="btn" style="padding:2px 8px;color:var(--red);border-color:var(--red)" data-spec-del="${id}">✕</button>`;
+    list.appendChild(row);
+  }
+  list.querySelectorAll('[data-spec-del]').forEach(b=>b.addEventListener('click',()=>{
+    delete state.meta.specDefs[b.dataset.specDel]; renderSpecList(); updateSpecLabel();
+  }));
+}
+
+// Add spec def
+document.getElementById('spec-add-btn').addEventListener('click',()=>{
+  if (!state.meta.specDefs) state.meta.specDefs = {};
+  const ids = Object.keys(state.meta.specDefs).map(Number);
+  const nextId = ids.length ? Math.max(...ids)+1 : 1;
+  state.meta.specDefs[nextId] = '';
+  renderSpecList();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PLAYBACK LOOP
+// ═══════════════════════════════════════════════════════════════
+function tick() {
+  if (state.playing) {
+    if (state.audioCtx && state.audioSource) {
+      state.currentTime = state.audioOffset + (state.audioCtx.currentTime - state.audioStartTime);
+      if (state.currentTime >= state.duration) { state.currentTime=state.duration; togglePlay(); }
+    } else {
+      state.currentTime += 1/60;
+    }
+    updateTimeDisplay(); updateProgress();
+    if (state.previewing) drawPreview();
+    else { drawChart(); drawWaveform(); }
+  }
+  requestAnimationFrame(tick);
+}
+tick();
+
+function togglePlay() {
+  state.playing=!state.playing;
+  const b1=document.getElementById('btn-play'),b2=document.getElementById('btn-playtransport');
+  if(state.playing){
+    playAudio();
+    b1.textContent='⏸ PAUSE';b1.classList.add('active');b2.textContent='⏸';
+  } else {
+    stopAudio();
+    b1.textContent='▶ PLAY';b1.classList.remove('active');b2.textContent='▶';
+  }
+}
+
+function seekTo(t) {
+  state.currentTime=Math.max(0,Math.min(t,state.duration));
+  if(state.playing){stopAudio();playAudio();}
+  updateTimeDisplay();updateProgress();drawChart();drawWaveform();
+}
+function updateTimeDisplay() {
+  const t=state.currentTime,m=Math.floor(t/60),s=(t%60).toFixed(3);
+  document.getElementById('time-display').textContent=m+':'+(t%60<10?'0':'')+s;
+}
+function updateProgress() {
+  document.getElementById('progress-fill').style.width=
+    (state.duration>0?state.currentTime/state.duration*100:0)+'%';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MOUSE
+// ═══════════════════════════════════════════════════════════════
+let mouseDown=false, holdDragLane=-1, holdDragStart=-1;
+
+chartCanvas.addEventListener('mousedown', e=>{
+  mouseDown=true;
+  const r=chartCanvas.getBoundingClientRect();
+  const x=e.clientX-r.left,y=e.clientY-r.top;
+  const t=xToTime(x),lane=laneFromY(y);
+  if(lane<0||lane>3)return;
+  if(state.tool==='tap') placeNote(t,lane);
+  else if(state.tool==='hold'){holdDragLane=lane;holdDragStart=snapTime(t);state.holdStart={lane,time:holdDragStart};}
+  else if(state.tool==='erase') eraseNote(t,lane);
+});
+
+chartCanvas.addEventListener('mousemove', e=>{
+  if(!mouseDown)return;
+  const r=chartCanvas.getBoundingClientRect();
+  const x=e.clientX-r.left,y=e.clientY-r.top;
+  const t=xToTime(x),lane=laneFromY(y);
+  if(state.tool==='erase') eraseNote(t,lane);
+  else if(state.tool==='hold'&&state.holdStart){state.holdStart._endTime=snapTime(t);drawChart();}
+});
+
+chartCanvas.addEventListener('mouseup', e=>{
+  mouseDown=false;
+  if(state.tool==='hold'&&state.holdStart){
+    const r=chartCanvas.getBoundingClientRect();
+    const endTime=snapTime(xToTime(e.clientX-r.left));
+    const duration=Math.abs(endTime-holdDragStart);
+    if(duration>0.02){
+      saveHistory();
+      notes().push({id:state.nextId++,lane:holdDragLane,
+        time:Math.min(holdDragStart,endTime),duration,
+        type:state.noteType, specId: state.noteType==='special'?state.specId:undefined,
+        char:state.noteChar,selected:false});
+      notes().sort((a,b)=>a.time-b.time);
+      updateStats();
+    }
+    state.holdStart=null; drawChart();
+  }
+  holdDragLane=-1;holdDragStart=-1;
+});
+
+chartCanvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  if(e.ctrlKey) state.zoom=Math.max(50,Math.min(1000,state.zoom*(e.deltaY>0?0.9:1.1)));
+  else { state.currentTime=Math.max(0,state.currentTime+e.deltaY*0.003*(600/state.zoom));
+    if(state.playing){stopAudio();playAudio();} }
+  updateTimeDisplay();updateProgress();drawChart();drawWaveform();
+},{passive:false});
+
+document.getElementById('progress-wrap').addEventListener('click', e=>{
+  const r=e.currentTarget.getBoundingClientRect();
+  seekTo((e.clientX-r.left)/r.width*state.duration);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;
+  if(e.code==='Space'){e.preventDefault();state.previewing?stopPreview():togglePlay();}
+  if(e.key==='t'||e.key==='T')setTool('tap');
+  if(e.key==='h'||e.key==='H')setTool('hold');
+  if(e.key==='e'||e.key==='E')setTool('erase');
+  if(e.key==='1')setLane(0);if(e.key==='2')setLane(1);
+  if(e.key==='3')setLane(2);if(e.key==='4')setLane(3);
+  if(e.key==='ArrowRight')seekTo(state.currentTime+60/state.bpm);
+  if(e.key==='ArrowLeft') seekTo(state.currentTime-60/state.bpm);
+  if((e.ctrlKey||e.metaKey)&&e.key==='z')undo();
+  if(e.key==='Delete'||e.key==='Backspace'){
+    saveHistory();setNotes(notes().filter(n=>!n.selected));updateStats();drawChart();
+  }
+  if(e.key==='Escape'&&state.previewing)stopPreview();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// UI WIRING
+// ═══════════════════════════════════════════════════════════════
+function setTool(t){state.tool=t;document.querySelectorAll('.tool-btn').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));}
+function setLane(l){state.activeLane=l;document.querySelectorAll('.lane-toggle').forEach(b=>b.classList.toggle('active',+b.dataset.lane===l));}
+
+document.getElementById('btn-play').addEventListener('click',togglePlay);
+document.getElementById('btn-playtransport').addEventListener('click',togglePlay);
+document.getElementById('btn-prev').addEventListener('click',()=>seekTo(0));
+document.getElementById('btn-next').addEventListener('click',()=>seekTo(state.duration));
+document.getElementById('btn-export').addEventListener('click',exportWvls);
+document.getElementById('btn-preview').addEventListener('click',startPreview);
+document.getElementById('btn-close-preview').addEventListener('click',stopPreview);
+
+document.getElementById('btn-clear').addEventListener('click',()=>{
+  if(!confirm('Clear all notes in '+state.activeDiff+'?'))return;
+  saveHistory();setNotes([]);updateStats();drawChart();toast('Cleared '+state.activeDiff);
+});
+
+document.getElementById('bpm-input').addEventListener('change',e=>{
+  state.bpm=+e.target.value||120;
+  document.getElementById('song-meta').textContent=`${state.bpm} bpm · ${fmtTime(state.duration)}`;
+  drawChart();
+});
+document.getElementById('snap-select').addEventListener('change',e=>{state.snapDiv=+e.target.value;});
+
+document.getElementById('btn-load-audio').addEventListener('click',()=>document.getElementById('file-audio').click());
+document.getElementById('btn-load-midi').addEventListener('click',()=>document.getElementById('file-midi').click());
+document.getElementById('btn-load-wvls').addEventListener('click',()=>document.getElementById('file-wvls').click());
+document.getElementById('file-audio').addEventListener('change',e=>{if(e.target.files[0])loadAudio(e.target.files[0]);});
+document.getElementById('file-midi').addEventListener('change',e=>{if(e.target.files[0])loadMidi(e.target.files[0]);});
+document.getElementById('file-wvls').addEventListener('change',e=>{
+  if(!e.target.files[0])return;
+  const r=new FileReader();
+  r.onload=ev=>importWvls(ev.target.result);
+  r.readAsText(e.target.files[0]);
+});
+
+document.querySelectorAll('.tool-btn').forEach(b=>b.addEventListener('click',()=>{
+  if(b.dataset.tool)setTool(b.dataset.tool);
+}));
+document.querySelectorAll('.lane-toggle').forEach(b=>b.addEventListener('click',()=>setLane(+b.dataset.lane)));
+
+// Difficulty tabs
+document.querySelectorAll('[data-diff]').forEach(b=>b.addEventListener('click',()=>{
+  state.activeDiff=b.dataset.diff;
+  document.querySelectorAll('[data-diff]').forEach(x=>x.classList.toggle('active',x.dataset.diff===state.activeDiff));
+  updateStats();drawChart();
+  toast('Editing: '+state.activeDiff);
+}));
+
+// Note type toggle
+document.querySelectorAll('[data-type]').forEach(b=>b.addEventListener('click',()=>{
+  state.noteType=b.dataset.type;
+  document.querySelectorAll('[data-type]').forEach(x=>x.classList.toggle('active',x.dataset.type===state.noteType));
+  document.getElementById('special-picker').style.display = state.noteType==='special'?'flex':'none';
+  updateSpecLabel();
+}));
+
+// Special ID picker
+function updateSpecLabel() {
+  document.getElementById('spec-id-display').textContent = state.specId;
+  const def = (state.meta.specDefs||{})[state.specId];
+  document.getElementById('spec-id-name').textContent = def || 'undefined — define in meta';
+}
+document.getElementById('spec-prev').addEventListener('click',()=>{
+  state.specId = Math.max(1, state.specId-1); updateSpecLabel();
+});
+document.getElementById('spec-next').addEventListener('click',()=>{
+  state.specId = Math.min(99, state.specId+1); updateSpecLabel();
+});
+
+// Character
+document.querySelectorAll('[data-char]').forEach(b=>b.addEventListener('click',()=>{
+  state.noteChar=b.dataset.char;
+  document.querySelectorAll('[data-char]').forEach(x=>x.classList.toggle('active',x.dataset.char===state.noteChar));
+}));
+
+// Meta modal
+document.getElementById('btn-shortcuts').addEventListener('click',()=>{
+  document.getElementById('shortcuts').classList.toggle('visible');
+});
+
+// Wire a meta button — repurpose song-info as clickable
+document.getElementById('song-info').style.cursor='pointer';
+document.getElementById('song-info').addEventListener('click',()=>{
+  updateSongMeta();
+  document.getElementById('meta-modal').style.display='flex';
+});
+document.getElementById('meta-cancel').addEventListener('click',()=>{
+  document.getElementById('meta-modal').style.display='none';
+});
+document.getElementById('meta-save').addEventListener('click',()=>{
+  state.meta.title   = document.getElementById('meta-title').value;
+  state.meta.artist  = document.getElementById('meta-artist').value;
+  state.meta.album   = document.getElementById('meta-album').value;
+  state.meta.audio   = document.getElementById('meta-audio').value;
+  state.meta.offset  = parseFloat(document.getElementById('meta-offset').value)||0;
+  state.meta.preview = document.getElementById('meta-preview').value;
+  state.bpm = parseFloat(document.getElementById('meta-bpm').value)||120;
+  document.getElementById('bpm-input').value = state.bpm;
+  // Collect spec defs from inputs
+  document.querySelectorAll('[data-spec-id]').forEach(inp=>{
+    state.meta.specDefs[inp.dataset.specId] = inp.value.trim();
+  });
+  document.getElementById('meta-modal').style.display='none';
+  updateSongMeta(); updateSpecLabel(); drawChart(); toast('Meta saved');
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+// MIDI CONTROLLER INPUT (MiniLab / any USB MIDI device)
+// ═══════════════════════════════════════════════════════════════
+
+// Zone map: MIDI note number → lane
+// Keyboard split into 4 equal zones across 88 keys (MIDI 21–108)
+// C1(24)–B2(47) = NOTE, C3(48)–B4(71) = NOMU, C5(72)–B6(95) = POP, C7(96)–B8(119) = CREST
+function midiNoteToLane(note) {
+  if (note < 48)  return 0; // NOTE  — low register
+  if (note < 72)  return 1; // NOMU  — mid-low
+  if (note < 96)  return 2; // POP   — mid-high
+  return 3;                  // CREST — high register
+}
+
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function midiNoteName(n) {
+  return NOTE_NAMES[n % 12] + Math.floor(n / 12 - 1);
+}
+
+// Track held controller keys for hold detection
+const midiHeld = {}; // noteNumber → {startTime, lane}
+const HOLD_THRESHOLD_MS = 200; // ms — below this = tap, above = hold
+
+function initMidi() {
+  if (!navigator.requestMIDIAccess) {
+    document.getElementById('midi-status-text').textContent = 'Not supported';
+    return;
+  }
+  navigator.requestMIDIAccess().then(access => {
+    connectMidiInputs(access);
+    access.onstatechange = () => connectMidiInputs(access);
+  }).catch(() => {
+    document.getElementById('midi-status-text').textContent = 'Access denied';
+  });
+}
+
+function connectMidiInputs(access) {
+  let count = 0;
+  for (const input of access.inputs.values()) {
+    input.onmidimessage = onMidiMessage;
+    count++;
+  }
+  if (count > 0) {
+    document.getElementById('midi-dot').style.color = 'var(--hit)';
+    document.getElementById('midi-status-text').textContent = `${count} device${count>1?'s':''} connected`;
+    document.getElementById('midi-zone-display').style.display = 'block';
+  } else {
+    document.getElementById('midi-dot').style.color = 'var(--red)';
+    document.getElementById('midi-status-text').textContent = 'No devices found';
+    document.getElementById('midi-zone-display').style.display = 'none';
+  }
+}
+
+function onMidiMessage(e) {
+  const [status, note, velocity] = e.data;
+  const type = status & 0xf0;
+
+  // Note On
+  if (type === 0x90 && velocity > 0) {
+    const lane = midiNoteToLane(note);
+    midiHeld[note] = { startTime: performance.now(), lane };
+    document.getElementById('midi-last-note').textContent =
+      midiNoteName(note) + ' → ' + ['NOTE','NOMU','POP','CREST'][lane];
+
+    // Flash lane color on the receptors
+    flashLane(lane);
+  }
+
+  // Note Off (or Note On with velocity 0)
+  if (type === 0x80 || (type === 0x90 && velocity === 0)) {
+    if (!midiHeld[note]) return;
+    const { startTime, lane } = midiHeld[note];
+    delete midiHeld[note];
+
+    const heldMs = performance.now() - startTime;
+    const t = state.currentTime;
+
+    if (state.noteType === 'special') {
+      // Special note — place tap and open spec picker
+      placeNote(t, lane);
+      // Briefly highlight the spec picker
+      const picker = document.getElementById('special-picker');
+      picker.style.outline = '1px solid var(--hit)';
+      setTimeout(() => picker.style.outline = '', 600);
+    } else if (heldMs >= HOLD_THRESHOLD_MS) {
+      // Hold note
+      const duration = heldMs / 1000;
+      saveHistory();
+      notes().push({
+        id: state.nextId++, lane,
+        time: snapTime(t - duration), // started in the past
+        duration: snapTime(duration) || 0.1,
+        type: 'normal', char: state.noteChar, selected: false
+      });
+      notes().sort((a,b) => a.time - b.time);
+      updateStats(); drawChart();
+    } else {
+      // Tap note
+      placeNote(t, lane);
+    }
+  }
+}
+
+function flashLane(lane) {
+  // Brief visual pulse on the lane header
+  const headers = document.querySelectorAll('.lane-header');
+  if (headers[lane]) {
+    headers[lane].style.background = LANE_COLORS[lane] + '44';
+    setTimeout(() => headers[lane].style.background = '', 120);
+  }
+}
+
+// Init MIDI on load
+initMidi();
+
+
+// ═══════════════════════════════════════════════════════════════
+function fmtTime(t) {
+  const m = Math.floor(t/60), s = (t%60).toFixed(1);
+  return m + ':' + (t%60<10?'0':'') + s;
+}
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// Init
+updateStats(); drawChart(); drawWaveform();
+</script>
+</body>
+</html>
